@@ -1,70 +1,81 @@
-# SuperSearch
-
 Chatbot Tech Stack & Quick Build Guide
-Overview
-I built a production-ready chatbot using a lightweight, practical stack that avoids training a custom LLM. The bot uses hosted LLM APIs, Azure document intelligence for parsing PDFs/forms, and a simple Streamlit front-end for demos and internal usage.
+A compact, production-ready chatbot stack that avoids training a custom LLM.
+This repo uses hosted LLM APIs (OpenAI / Google Gemini), Azure Document Intelligence for PDF/form parsing, and a Streamlit front-end for demos and internal usage.
 
 Dev environment (local)
-VS Code — primary IDE (extensions: Python, Pylance, Docker, Live Share).
+IDE: VS Code (recommended extensions: Python, Pylance, Docker, Live Share)
 
-Python (>=3.10 recommended) — backend logic, API clients, and orchestration. Use a virtualenv or Poetry for dependency isolation.
+Python: >= 3.10 — backend logic, API clients, orchestration. Use venv or Poetry for dependency isolation.
 
-Suggested local setup commands:
+Suggested local setup
 
 bash
 Copy
 Edit
+# create & activate virtualenv (macOS / Linux)
 python -m venv .venv
-source .venv/bin/activate   # or .\.venv\Scripts\activate on Windows
+source .venv/bin/activate
+
+# (Windows - CMD)
+.venv\Scripts\activate
+
+# (Windows - PowerShell)
+.\.venv\Scripts\Activate.ps1
+
+# install dependencies and open editor
 pip install -r requirements.txt
 code .
 LLM / API layer
-Use hosted LLM APIs — no need to train or host your own LLM. Options:
+Approach: Use hosted LLM APIs — no custom model training required.
 
-OpenAI APIs (Chat Completions / Responses)
+Options:
 
-Google Gemini via MakerSuite (if available for your account/region)
+OpenAI (Chat Completions / Responses)
 
-Why: faster to iterate, lower infrastructure cost, simpler compliance when you restrict the data you send.
+Google Gemini via MakerSuite (if available)
 
-Notes: check pricing, quotas, and token handling for whichever API you choose.
+Why: faster iteration, lower infra cost, simpler to manage compliance when you limit what you send.
 
-Environment variables (example):
+Notes: Verify pricing, quotas, and token handling for your chosen provider.
+
+Example environment variables (.env)
 
 ini
 Copy
 Edit
-OPENAI_API_KEY=...
-GOOGLE_API_KEY=...
+OPENAI_API_KEY=your_openai_api_key_here
+GOOGLE_API_KEY=your_google_api_key_here
+AZURE_FORM_RECOGNIZER_KEY=your_azure_key_here
+AZURE_STORAGE_CONN_STRING=...
 Document / Knowledge ingestion
-Azure AI Document Intelligence (Form Recognizer) — extract structured data, key-value pairs, and text from invoices, PDFs, forms and scanned docs. Ideal for processing internal documents before feeding relevant content to the LLM.
+Tool: Azure AI Document Intelligence (Form Recognizer) — extracts text, key-value pairs, tables from invoices, PDFs, forms, and scans.
 
-Workflow:
+Suggested workflow:
 
-Upload raw files to blob storage (or pass bytes).
+Upload raw files to blob storage (or pass file bytes directly).
 
 Call Document Intelligence to extract text/fields.
 
-Optionally run a text pre-processing step (clean, chunk, embed if using retrieval).
+Optional preprocessing: clean, chunk, and embed (if using retrieval/RAG).
 
-Send cleaned context to LLM API for answer generation.
+Send cleaned context to the LLM for answer generation.
 
-Tip: evaluate free tier / trial limits and sanitize PII before sending to 3rd-party APIs.
+Tip: Evaluate free/trial limits and sanitize PII before sending data to third-party APIs.
 
 Orchestration & API calling
-Backend: Python functions to:
+Backend (Python): functions to:
 
-call the document analyzer,
+call the document analyzer
 
-handle embeddings or retrieval (if using RAG),
+build embeddings / retrieval (if RAG)
 
-call LLM endpoints (OpenAI / Gemini),
+call LLM endpoints (OpenAI / Gemini)
 
-orchestrate agent actions if you use agentic workflows.
+orchestrate agentic workflows (optional)
 
-HTTP layer: lightweight FastAPI (optional) if you want a REST interface rather than direct Streamlit calls.
+HTTP layer (optional): FastAPI for a lightweight REST interface if you don’t want Streamlit to call the backend directly.
 
-Small pseudo-example for calling an LLM:
+Small pseudo-example (Python)
 
 python
 Copy
@@ -73,51 +84,50 @@ import os
 import openai
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
 resp = openai.ChatCompletion.create(
-  model="gpt-4o-mini",
-  messages=[{"role":"user","content":"Summarize this doc..."}]
+    model="gpt-4o-mini",
+    messages=[{"role":"user","content":"Summarize this doc..."}]
 )
+
+print(resp.choices[0].message["content"])
 Frontend / Demo UI
-Streamlit — quick to spin up a chat UI and demo the bot to stakeholders.
+Streamlit: fast to spin up a chat UI for demos and stakeholder review.
 
-Use Streamlit for prototyping; if you need production UI, consider React/Vue + hosted backend.
+Pattern: input box → async backend call (or direct) → display chat history + attachments.
 
-You can generate a basic Streamlit chat UI quickly (search for “Streamlit chat demo” or use ChatGPT to scaffold code).
-
-Minimal Streamlit pattern:
-
-input box for user prompt
-
-async call to backend or direct backend logic
-
-display chat history and attachments
+When to replace: If you need production-grade UI, consider React or Vue with a hosted backend.
 
 Deployment & infra
-Cloud: Azure App Service, Azure Container Instances, or a container on AKS for scale. For small demos, Streamlit Cloud / Vercel (for static frontends + API elsewhere) also work.
+Cloud options: Azure App Service, Azure Container Instances, or AKS for scale.
+For small demos: Streamlit Cloud or Vercel (static frontends + API elsewhere).
 
-Secrets: store API keys in Azure Key Vault or your cloud provider’s secrets manager.
+Secrets: store API keys in Azure Key Vault (or your cloud provider’s secrets manager).
 
-CI/CD: GitHub Actions to run linting, tests, and build/push container images.
+CI/CD: GitHub Actions for linting, tests, build/push containers.
 
 Security & compliance
-Don't send sensitive/full internal docs to external LLMs unless allowed. Consider:
+Do not send sensitive/internal docs to external LLMs unless permitted.
 
-removing PII before API calls,
+Best practices:
 
-using on-prem or private endpoints where required,
+remove or redact PII before API calls
 
-logging minimal request/response metadata,
+consider private / on-prem endpoints if required
 
-enforce strict RBAC on storage and keys.
+log minimal request/response metadata
+
+enforce strict RBAC on storage and secrets
 
 Quick checklist to reproduce
 Install VS Code and create a Python virtual environment.
 
-Create cloud accounts (Azure for Document Intelligence + storage; LLM provider account for OpenAI / Google).
+Create cloud accounts: Azure (Document Intelligence + storage) and your LLM provider (OpenAI / Google).
 
-Implement backend: document ingestion → preprocess → call LLM.
+Implement backend pipeline: document ingestion → preprocess → (optional) embeddings/retrieval → call LLM.
 
-Build Streamlit frontend to call the backend and display conversation.
+Build Streamlit frontend to send prompts and display conversation.
 
-Store keys in env vars / Key Vault; deploy to Azure or container platform.
+Store secrets in env vars / Key Vault and deploy to Azure or your container platform.
 
+Add CI/CD (GitHub Actions) to automate lint, test, and deploy.
